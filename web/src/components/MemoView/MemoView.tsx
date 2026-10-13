@@ -25,7 +25,7 @@ import { lazyWithReload } from "@/utils/lazy";
 import { canManageMemo } from "@/utils/user";
 import { MemoBody, MemoCommentListView, MemoHeader } from "./components";
 import { MEMO_CARD_BASE_CLASSES } from "./constants";
-import { useImagePreview } from "./hooks";
+import { useImagePreview, useMemoHandlers } from "./hooks";
 import { computeCommentAmount, MemoViewContext } from "./MemoViewContext";
 import { isMemoDetailPath, resolveMemoParentPage } from "./navigation";
 import type { MemoViewHandle, MemoViewProps } from "./types";
@@ -89,6 +89,7 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
       })
       .catch(() => undefined);
   }, [EditorComponent, focusMountedEditor, showEditor]);
+  const { handleMemoBlankClick } = useMemoHandlers({ readonly, openEditor, openPreview });
   const closeEditor = useCallback(() => setShowEditor(false), []);
 
   // The grid keys tiles by memo name (see getMemoKey), so the focused editor
@@ -187,6 +188,7 @@ const MemoView = forwardRef<MemoViewHandle, MemoViewProps>((props, ref) => {
       className={cn(MEMO_CARD_BASE_CLASSES, showCommentPreview ? "mb-0 rounded-b-none" : "mb-2", className)}
       ref={cardRef}
       tabIndex={readonly ? -1 : 0}
+      onClick={handleMemoBlankClick}
     >
       <MemoHeader
         timeDisplay={timeDisplay}

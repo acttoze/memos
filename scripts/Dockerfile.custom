@@ -1,0 +1,30 @@
+# Build web first: cd web && pnpm install --frozen-lockfile && pnpm release
+# Resource-bounded native build for a shared production host.
+FROM golang:1.27.0-alpine AS backend
+WORKDIR /build
+ENV GOMAXPROCS=2 GOMEMLIMIT=2GiB GOFLAGS=-p=2
+RUN apk add --no-cache git ca-certificates
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+ARG VERSION=0.31.0 COMMIT=unknown
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath \
+    -ldflags="-s -w -X github.com/usememos/memos/internal/version.Version=${VERSION} -X github.com/usememos/memos/internal/version.Commit=${COMMIT} -extldflags '-static'" \
+    -tags netgo,osusergo -o /memos ./cmd/memos
+FROM alpine:3.21
+RUN apk add --no-cache tzdata ca-certificates su-exec && \
+    addgroup -g 10001 -S nonroot && \
+    adduser -u 10001 -S -G nonroot -h /var/opt/memos nonroot && \
+    mkdir -p /var/opt/memos /usr/local/memos && chown -R nonroot:nonroot /var/opt/memos
+ARG COMMIT=unknown
+LABEL org.opencontainers.image.source="https://github.com/acttoze/memos" \
+      org.opencontainers.image.revision="${COMMIT}"
+COPY --from=backend /memos /usr/local/memos/memos
+COPY --chmod=755 scripts/entrypoint.sh /usr/local/memos/entrypoint.sh
+USER root
+WORKDIR /var/opt/memos
+VOLUME /var/opt/memos
+ENV TZ=UTC MEMOS_PORT=5230
+EXPOSE 5230
+ENTRYPOINT ["/usr/local/memos/entrypoint.sh", "/usr/local/memos/memos"]

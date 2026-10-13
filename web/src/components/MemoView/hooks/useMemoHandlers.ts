@@ -36,5 +36,23 @@ export const useMemoHandlers = (options: UseMemoHandlersOptions) => {
     [readonly, openEditor, memoRelatedSetting.enableDoubleClickEdit],
   );
 
-  return { handleMemoContentClick, handleMemoContentDoubleClick };
+  const handleMemoBlankClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (readonly || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      const interactive = target.closest(
+        "a,button,input,textarea,select,label,summary,[role],[tabindex],[contenteditable]:not([contenteditable='false']),img,video,audio,iframe,canvas,svg",
+      );
+      // The article itself has tabindex; only descendants block blank editing.
+      if (interactive && interactive !== e.currentTarget) return;
+      if (window.getSelection()?.toString()) return;
+      // Text containers are not blank; keep ordinary selection and double-click behavior.
+      if (target !== e.currentTarget && target.textContent?.trim()) return;
+      openEditor();
+    },
+    [readonly, openEditor],
+  );
+
+  return { handleMemoContentClick, handleMemoContentDoubleClick, handleMemoBlankClick };
 };
